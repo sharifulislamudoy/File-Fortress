@@ -5,10 +5,12 @@ import { motion } from "framer-motion";
 import { FolderLock, User, Home, FolderTree, Mic, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const { user, logout } = useAuth();
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -85,6 +87,9 @@ export default function Navbar() {
                   animate={{ opacity: 1, y: 0 }}
                   className="absolute right-0 mt-2 w-48 bg-dark-green/95 backdrop-blur-md rounded-lg shadow-lg border border-emerald-500/20 py-1 z-50"
                 >
+                  <div className="px-4 py-2 text-sm text-white/60 border-b border-emerald-500/20">
+                    {user?.name || user?.email}
+                  </div>
                   <Link
                     href="/profile"
                     className="flex items-center gap-2 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition-colors"
@@ -98,7 +103,7 @@ export default function Navbar() {
                     <Settings className="w-4 h-4" /> Settings
                   </Link>
                   <button
-                    onClick={() => {/* handle logout */}}
+                    onClick={logout}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-colors w-full text-left"
                   >
                     <LogOut className="w-4 h-4" /> Logout
@@ -157,6 +162,9 @@ export default function Navbar() {
                 animate={{ opacity: 1, y: 0 }}
                 className="absolute right-0 mt-2 w-48 bg-dark-green/95 backdrop-blur-md rounded-lg shadow-lg border border-emerald-500/20 py-1 z-50"
               >
+                <div className="px-4 py-2 text-sm text-white/60 border-b border-emerald-500/20">
+                  {user?.name || user?.email}
+                </div>
                 <Link
                   href="/profile"
                   className="flex items-center gap-2 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition-colors"
@@ -170,7 +178,7 @@ export default function Navbar() {
                   <Settings className="w-4 h-4" /> Settings
                 </Link>
                 <button
-                  onClick={() => {/* handle logout */}}
+                  onClick={logout}
                   className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-colors w-full text-left"
                 >
                   <LogOut className="w-4 h-4" /> Logout
