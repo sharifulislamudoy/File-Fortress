@@ -3,11 +3,12 @@
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import UnlockPage from "@/components/UnlockPage";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function HomeLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, hasPin, isLocked } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -22,6 +23,11 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
 
   if (!user) {
     return null;
+  }
+
+  // If user has a PIN and app is locked, show UnlockPage instead of the normal content
+  if (hasPin && isLocked) {
+    return <UnlockPage />;
   }
 
   return (
