@@ -1,8 +1,7 @@
-// src/components/Navbar.tsx
 "use client";
 
 import { motion } from "framer-motion";
-import { FolderLock, User, Home, FolderTree, Mic, LogOut, Settings } from "lucide-react";
+import { FolderLock, User, Home, FolderTree, Mic, LogOut, Settings, Cloud, CloudOff } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -10,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 export default function Navbar() {
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, cloudConnected, cloudinaryConfig } = useAuth();
 
   // Close profile menu when clicking outside
   useEffect(() => {
@@ -51,6 +50,24 @@ export default function Navbar() {
               <NavLink href="/files" icon={<FolderTree className="w-4 h-4" />}>
                 My Files
               </NavLink>
+
+              {/* Cloudinary Connection Status */}
+              <Link
+                href={cloudConnected ? "/files" : "/connect-cloudinary"}
+                className="flex items-center gap-2 px-2 py-1 rounded-full transition-all"
+              >
+                {cloudConnected ? (
+                  <div className="flex items-center gap-1 text-green-400">
+                    <Cloud className="w-4 h-4" />
+                    <span className="text-xs font-medium">Cloud Connected</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-red-400 animate-pulse">
+                    <CloudOff className="w-4 h-4" />
+                    <span className="text-xs font-medium">Connect Cloudinary</span>
+                  </div>
+                )}
+              </Link>
 
               {/* Voice Assistant Indicator */}
               <button
@@ -120,6 +137,23 @@ export default function Navbar() {
         <div className="flex items-center justify-around py-2">
           <MobileNavLink href="/" icon={<Home className="w-5 h-5" />} label="Home" />
           <MobileNavLink href="/files" icon={<FolderTree className="w-5 h-5" />} label="Files" />
+          {/* Cloud status for mobile */}
+          <Link
+            href={cloudConnected ? "/files" : "/connect-cloudinary"}
+            className="flex flex-col items-center justify-center p-2 rounded-lg"
+          >
+            {cloudConnected ? (
+              <>
+                <Cloud className="w-5 h-5 text-green-400" />
+                <span className="text-[10px] mt-1 text-green-400">Cloud</span>
+              </>
+            ) : (
+              <>
+                <CloudOff className="w-5 h-5 text-red-400 animate-pulse" />
+                <span className="text-[10px] mt-1 text-red-400">Connect</span>
+              </>
+            )}
+          </Link>
           <button
             onClick={() => setIsVoiceActive(!isVoiceActive)}
             className={`relative flex flex-col items-center justify-center p-2 rounded-lg transition-all ${
