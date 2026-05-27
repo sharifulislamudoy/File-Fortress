@@ -7,8 +7,10 @@ import { Cloud, Shield, AlertTriangle, ExternalLink } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function ConnectCloudinaryPage() {
+  const [cloudName, setCloudName] = useState("");
   const [folderName, setFolderName] = useState("");
-  const [unsignedUploadPreset, setUnsignedUploadPreset] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [apiSecret, setApiSecret] = useState("");
   const [loading, setLoading] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [error, setError] = useState("");
@@ -18,8 +20,8 @@ export default function ConnectCloudinaryPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!folderName.trim() || !unsignedUploadPreset.trim()) {
-      setError("Both fields are required");
+    if (!cloudName.trim() || !folderName.trim() || !apiKey.trim() || !apiSecret.trim()) {
+      setError("All fields are required");
       return;
     }
     setShowWarning(true);
@@ -29,10 +31,11 @@ export default function ConnectCloudinaryPage() {
     setLoading(true);
     setError("");
     try {
-      await saveCloudinaryConfig(folderName.trim(), unsignedUploadPreset.trim());
+      await saveCloudinaryConfig(cloudName.trim(), folderName.trim(), apiKey.trim(), apiSecret.trim());
       router.push("/");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to save configuration");
+      const message = err.response?.data?.message || "Failed to save configuration";
+      setError(message);
     } finally {
       setLoading(false);
       setShowWarning(false);
@@ -78,11 +81,25 @@ export default function ConnectCloudinaryPage() {
             </div>
             <h2 className="text-2xl font-bold text-white">Connect Cloudinary</h2>
             <p className="text-white/60 mt-2 text-sm">
-              Enable secure cloud storage for your files
+              Enter your Cloudinary credentials to enable secure storage
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                Cloud Name
+              </label>
+              <input
+                type="text"
+                value={cloudName}
+                onChange={(e) => setCloudName(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-lg py-2 px-4 text-white placeholder-white/40 focus:outline-none focus:border-emerald-400 transition-colors"
+                placeholder="your-cloud-name"
+                required
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-white/80 mb-2">
                 Cloudinary Folder Name
@@ -95,26 +112,34 @@ export default function ConnectCloudinaryPage() {
                 placeholder="my-app-folder"
                 required
               />
-              <p className="text-white/40 text-xs mt-1">
-                The folder where your files will be stored in Cloudinary
-              </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-white/80 mb-2">
-                Unsigned Upload Preset
+                API Key
               </label>
               <input
                 type="text"
-                value={unsignedUploadPreset}
-                onChange={(e) => setUnsignedUploadPreset(e.target.value)}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
                 className="w-full bg-white/10 border border-white/20 rounded-lg py-2 px-4 text-white placeholder-white/40 focus:outline-none focus:border-emerald-400 transition-colors"
-                placeholder="my_unsigned_preset"
+                placeholder="123456789012345"
                 required
               />
-              <p className="text-white/40 text-xs mt-1">
-                Create an unsigned upload preset in your Cloudinary settings
-              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                API Secret
+              </label>
+              <input
+                type="password"
+                value={apiSecret}
+                onChange={(e) => setApiSecret(e.target.value)}
+                className="w-full bg-white/10 border border-white/20 rounded-lg py-2 px-4 text-white placeholder-white/40 focus:outline-none focus:border-emerald-400 transition-colors"
+                placeholder="••••••••••••••••"
+                required
+              />
             </div>
 
             {error && (
@@ -163,15 +188,21 @@ export default function ConnectCloudinaryPage() {
               <h3 className="text-xl font-bold">Warning: Irreversible Action</h3>
             </div>
             <p className="text-white/80 mb-4">
-              Once you connect Cloudinary, you will not be able to change your folder name or upload preset later. 
+              Once you connect Cloudinary, you will not be able to change these credentials later.
               Please double-check your inputs.
             </p>
-            <div className="bg-white/5 rounded-lg p-3 mb-6">
+            <div className="bg-white/5 rounded-lg p-3 mb-6 space-y-1">
+              <p className="text-sm text-white/60">
+                <span className="font-semibold">Cloud Name:</span> {cloudName}
+              </p>
               <p className="text-sm text-white/60">
                 <span className="font-semibold">Folder:</span> {folderName}
               </p>
-              <p className="text-sm text-white/60 mt-1">
-                <span className="font-semibold">Upload Preset:</span> {unsignedUploadPreset}
+              <p className="text-sm text-white/60">
+                <span className="font-semibold">API Key:</span> {apiKey}
+              </p>
+              <p className="text-sm text-white/60">
+                <span className="font-semibold">API Secret:</span> {"•".repeat(apiSecret.length || 8)}
               </p>
             </div>
             <div className="flex gap-3">
@@ -186,7 +217,7 @@ export default function ConnectCloudinaryPage() {
                 disabled={loading}
                 className="flex-1 px-4 py-2 rounded-lg bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-50"
               >
-                {loading ? "Connecting..." : "Yes, Connect"}
+                {loading ? "Validating & Connecting..." : "Yes, Connect"}
               </button>
             </div>
           </motion.div>

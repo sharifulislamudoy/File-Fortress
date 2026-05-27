@@ -11,8 +11,10 @@ interface User {
 }
 
 interface CloudinaryConfig {
+  cloudName: string;
   folderName: string;
-  unsignedUploadPreset: string;
+  apiKey: string;
+  apiSecret: string;
 }
 
 interface AuthContextType {
@@ -30,7 +32,7 @@ interface AuthContextType {
   setTempPin: (pin: string) => void;
   clearTempPin: () => void;
   setPinAndUnlock: (pin: string) => Promise<void>;
-  saveCloudinaryConfig: (folderName: string, unsignedUploadPreset: string) => Promise<void>;
+  saveCloudinaryConfig: (cloudName: string, folderName: string, apiKey: string, apiSecret: string) => Promise<void>;
   fetchCloudinaryStatus: () => Promise<void>;
 }
 
@@ -46,7 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [cloudinaryConfig, setCloudinaryConfig] = useState<CloudinaryConfig | null>(null);
   const router = useRouter();
 
-  // Load user and PIN status on mount
   useEffect(() => {
     const loadUser = async () => {
       const token = localStorage.getItem("token");
@@ -59,14 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await api.get("/auth/me");
         setUser(response.data);
 
-        // Check PIN status
         const pinCheck = await api.get("/pin/check");
         setHasPin(pinCheck.data.hasPin);
         if (pinCheck.data.hasPin) {
           setIsLocked(true);
         }
 
-        // Check Cloudinary status
         await fetchCloudinaryStatus();
       } catch (error) {
         localStorage.removeItem("token");
@@ -94,9 +93,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const saveCloudinaryConfig = async (folderName: string, unsignedUploadPreset: string) => {
-    await api.post("/cloudinary/config", { folderName, unsignedUploadPreset });
-    await fetchCloudinaryStatus(); // refresh status
+  const saveCloudinaryConfig = async (
+    cloudName: string,
+    folderName: string,
+    apiKey: string,
+    apiSecret: string
+  ) => {
+    await api.post("/cloudinary/config", { cloudName, folderName, apiKey, apiSecret });
+    await fetchCloudinaryStatus();
   };
 
   const login = async (email: string, password: string) => {
