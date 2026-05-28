@@ -22,3 +22,30 @@ api.interceptors.request.use(
 );
 
 export default api;
+
+export const folderApi = {
+  create: (data: { name: string; purpose: string; parentId?: string }) =>
+    api.post('/folders', data),
+  getByPath: (path: string) => api.get(`/folders?path=${encodeURIComponent(path)}`),
+  getRoot: () => api.get('/folders/root'),
+  getAll: () => api.get('/folders/all'),
+  getById: (id: string) => api.get(`/folders/${id}`),
+};
+
+export const fileApi = {
+  upload: (folderId: string, fileType: string, file: File) => {
+    const formData = new FormData();
+    formData.append('folderId', folderId);
+    formData.append('fileType', fileType);
+    formData.append('file', file);
+    return api.post('/files/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getByFolder: (folderId: string) => api.get(`/files/folder/${folderId}`),
+  delete: (fileId: string) => api.delete(`/files/${fileId}`),
+};
+
+export const aiApi = {
+  ask: (question: string) => api.post('/ai/ask', { question }),
+};

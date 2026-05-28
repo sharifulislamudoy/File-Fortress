@@ -25,7 +25,6 @@ export default function HomeLayout({ children }: { children: React.ReactNode }) 
     return null;
   }
 
-  // If user has a PIN and app is locked, show UnlockPage instead of the normal content
   if (hasPin && isLocked) {
     return <UnlockPage />;
   }
