@@ -8,7 +8,7 @@ import InitialLoader from "@/components/InitialLoader";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FileFortress - Secure Cloud Storage",
+  title: "FileFortress",
   description: "End-to-end encrypted file storage with voice control",
 };
 
