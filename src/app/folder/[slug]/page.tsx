@@ -16,11 +16,15 @@ import {
   FileArchive,
   FileCode,
   Eye,
+  StickyNote,
+  Link as LinkIcon,
+  Copy,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import api from "@/lib/api";
+import api, { noteApi } from "@/lib/api";
 import FileUploadModal from "@/components/FileUploadModal";
+import NoteModal from "@/components/NoteModal";
 import Chatbot from "@/components/Chatbot";
 
 interface Folder {
@@ -37,7 +41,20 @@ interface FileItem {
   fileType: "image" | "video" | "document" | "other";
   size: number;
   mimeType: string;
+  createdAt: string;
 }
+
+interface NoteItem {
+  _id: string;
+  title: string;
+  type: "link" | "text";
+  content: string;
+  createdAt: string;
+}
+
+type ContentItem =
+  | { type: "file"; data: FileItem }
+  | { type: "note"; data: NoteItem };
 
 const getFileExtension = (filename: string): string => {
   return filename.split('.').pop()?.toLowerCase() || '';
@@ -54,6 +71,11 @@ const getFileIcon = (file: FileItem) => {
   if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return <FileArchive className="w-8 h-8 text-yellow-400" />;
   if (["txt", "md"].includes(ext)) return <FileCode className="w-8 h-8 text-gray-400" />;
   return <File className="w-8 h-8 text-white/60" />;
+};
+
+const getNoteIcon = (type: string) => {
+  if (type === "link") return <LinkIcon className="w-8 h-8 text-blue-400" />;
+  return <StickyNote className="w-8 h-8 text-purple-400" />;
 };
 
 const getThumbnailUrl = (url: string, fileType: string, mimeType: string): string | null => {
@@ -89,18 +111,30 @@ const downloadFile = async (url: string, filename: string) => {
   }
 };
 
+const copyToClipboard = async (text: string, label: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    alert(`${label} copied to clipboard!`);
+  } catch (err) {
+    alert('Failed to copy');
+  }
+};
+
 export default function FolderPage() {
   const { slug } = useParams();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [folder, setFolder] = useState<Folder | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFileModal, setShowFileModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
   const [error, setError] = useState("");
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -119,6 +153,7 @@ export default function FolderPage() {
       setFolder(currentFolder);
       const contentsRes = await api.get(`/folders/${currentFolder._id}/contents`);
       setFiles(contentsRes.data.files);
+      setNotes(contentsRes.data.notes || []);
     } catch (err: any) {
       setError(err.response?.data?.message || "Folder not found");
     } finally {
@@ -128,11 +163,27 @@ export default function FolderPage() {
 
   const handleDeleteFile = async (fileId: string) => {
     if (!confirm("Are you sure you want to delete this file?")) return;
+    setDeletingId(fileId);
     try {
       await api.delete(`/files/${fileId}`);
       fetchFolderContents();
     } catch (err) {
       alert("Failed to delete file");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    if (!confirm("Are you sure you want to delete this note?")) return;
+    setDeletingId(noteId);
+    try {
+      await noteApi.delete(noteId);
+      fetchFolderContents();
+    } catch (err) {
+      alert("Failed to delete note");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -151,6 +202,16 @@ export default function FolderPage() {
     setIsPreviewOpen(false);
     setPreviewFile(null);
   };
+
+  // Combine files and notes into a single array for grid display
+  const contentItems: ContentItem[] = [
+    ...files.map(file => ({ type: "file" as const, data: file })),
+    ...notes.map(note => ({ type: "note" as const, data: note })),
+  ].sort((a, b) => {
+    const dateA = a.type === "file" ? new Date(a.data.createdAt).getTime() : new Date(a.data.createdAt).getTime();
+    const dateB = b.type === "file" ? new Date(b.data.createdAt).getTime() : new Date(b.data.createdAt).getTime();
+    return dateB - dateA;
+  });
 
   if (loading || authLoading) {
     return (
@@ -174,7 +235,7 @@ export default function FolderPage() {
   return (
     <div className="min-h-screen bg-dark-green pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header with Back button and Upload */}
+        {/* Header with Back button and Action Buttons */}
         <div className="mb-6">
           <button
             onClick={() => router.back()}
@@ -187,67 +248,135 @@ export default function FolderPage() {
               <h1 className="text-2xl font-bold text-white">{folder.name}</h1>
               <p className="text-white/60 mt-1">{folder.purpose}</p>
             </div>
-            <button
-              onClick={() => setShowFileModal(true)}
-              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-all"
-            >
-              <Upload className="w-4 h-4" />
-              Add File
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowNoteModal(true)}
+                className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition-all"
+              >
+                <StickyNote className="w-4 h-4" />
+                Add Note
+              </button>
+              <button
+                onClick={() => setShowFileModal(true)}
+                className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg transition-all"
+              >
+                <Upload className="w-4 h-4" />
+                Add File
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Files Section */}
-        {files.length > 0 ? (
+        {/* Content Grid - Files & Notes together */}
+        {contentItems.length > 0 ? (
           <div>
-            <h2 className="text-lg font-semibold text-white/80 mb-3">Files</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {files.map((file) => {
-                const thumbnailUrl = getThumbnailUrl(file.url, file.fileType, file.mimeType);
-                const isDownloading = downloadingId === file._id;
-                return (
-                  <div key={file._id} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden group hover:border-emerald-400/50 transition-all">
+            <h2 className="text-lg font-semibold text-white/80 mb-3">All Items</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {contentItems.map((item) => (
+                item.type === "file" ? (
+                  // File Card
+                  <div key={item.data._id} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden group hover:border-emerald-400/50 transition-all">
                     <div className="relative aspect-video bg-black/30 flex items-center justify-center">
-                      {thumbnailUrl ? (
-                        <img src={thumbnailUrl} alt={file.originalName} className="w-full h-full object-cover" onError={(e) => (e.target as HTMLImageElement).style.display = "none"} />
-                      ) : (
-                        <div className="flex flex-col items-center gap-2">
-                          {getFileIcon(file)}
-                          <span className="text-xs text-white/40 uppercase">{getFileExtension(file.originalName) || "file"}</span>
-                        </div>
-                      )}
+                      {(() => {
+                        const thumbnailUrl = getThumbnailUrl(item.data.url, item.data.fileType, item.data.mimeType);
+                        if (thumbnailUrl) {
+                          return (
+                            <img src={thumbnailUrl} alt={item.data.originalName} className="w-full h-full object-cover" onError={(e) => (e.target as HTMLImageElement).style.display = "none"} />
+                          );
+                        }
+                        return (
+                          <div className="flex flex-col items-center gap-2">
+                            {getFileIcon(item.data)}
+                            <span className="text-xs text-white/40 uppercase">{getFileExtension(item.data.originalName) || "file"}</span>
+                          </div>
+                        );
+                      })()}
                       <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                        <button onClick={() => openPreview(file)} className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-full transition-all" title="Quick Preview"><Eye className="w-4 h-4" /></button>
-                        <button onClick={() => handleDownload(file)} disabled={isDownloading} className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-all disabled:opacity-50" title="Download">
-                          {isDownloading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
+                        <button onClick={() => openPreview(item.data)} className="bg-emerald-500 hover:bg-emerald-600 text-white p-2 rounded-full transition-all" title="Quick Preview"><Eye className="w-4 h-4" /></button>
+                        <button onClick={() => handleDownload(item.data)} disabled={downloadingId === item.data._id} className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full transition-all disabled:opacity-50" title="Download">
+                          {downloadingId === item.data._id ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Download className="w-4 h-4" />}
                         </button>
-                        <a href={file.url} target="_blank" rel="noopener noreferrer" className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-all" title="Open in New Tab"><ExternalLink className="w-4 h-4" /></a>
+                        <a href={item.data.url} target="_blank" rel="noopener noreferrer" className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-all" title="Open in New Tab"><ExternalLink className="w-4 h-4" /></a>
                       </div>
                     </div>
                     <div className="p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate" title={file.originalName}>{file.originalName}</p>
-                          <p className="text-white/40 text-xs mt-1">{formatFileSize(file.size)}</p>
+                          <p className="text-white text-sm font-medium truncate" title={item.data.originalName}>{item.data.originalName}</p>
+                          <p className="text-white/40 text-xs mt-1">{formatFileSize(item.data.size)}</p>
                         </div>
-                        <button onClick={() => handleDeleteFile(file._id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDeleteFile(item.data._id)} disabled={deletingId === item.data._id} className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 disabled:opacity-50">
+                          {deletingId === item.data._id ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                ) : (
+                  // Note Card
+                  <div key={item.data._id} className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden group hover:border-purple-400/50 transition-all flex flex-col">
+                    <div className="p-4 flex-1">
+                      <div className="flex items-start gap-3">
+                        {getNoteIcon(item.data.type)}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-semibold text-base truncate" title={item.data.title}>
+                            {item.data.title}
+                          </h3>
+                          {item.data.type === "link" ? (
+                            <div className="mt-2">
+                              <a
+                                href={item.data.content}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 text-sm hover:underline break-all"
+                              >
+                                {item.data.content.length > 50 ? item.data.content.substring(0, 50) + "..." : item.data.content}
+                              </a>
+                            </div>
+                          ) : (
+                            <div className="mt-2">
+                              <p className="text-white/70 text-sm line-clamp-3 whitespace-pre-wrap break-words">
+                                {item.data.content}
+                              </p>
+                            </div>
+                          )}
+                          <p className="text-white/30 text-xs mt-2">
+                            {new Date(item.data.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="px-4 pb-4 flex justify-end gap-2 border-t border-white/5 pt-3">
+                      <button
+                        onClick={() => copyToClipboard(item.data.content, item.data.type === "link" ? "Link" : "Text")}
+                        className="text-white/50 hover:text-emerald-400 transition-colors p-1"
+                        title="Copy to clipboard"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNote(item.data._id)}
+                        disabled={deletingId === item.data._id}
+                        className="text-white/50 hover:text-red-400 transition-colors p-1 disabled:opacity-50"
+                        title="Delete note"
+                      >
+                        {deletingId === item.data._id ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                )
+              ))}
             </div>
           </div>
         ) : (
           <div className="text-center py-12">
             <FolderOpen className="w-16 h-16 text-white/20 mx-auto mb-4" />
             <p className="text-white/60">This folder is empty.</p>
-            <p className="text-white/40 text-sm mt-2">Upload a file to get started.</p>
+            <p className="text-white/40 text-sm mt-2">Add a file or note to get started.</p>
           </div>
         )}
       </div>
 
-      {/* File Preview Modal (same as before) */}
+      {/* File Preview Modal */}
       {isPreviewOpen && previewFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onClick={closePreview}>
           <div className="relative max-w-5xl w-full max-h-[90vh] bg-dark-green rounded-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -278,6 +407,7 @@ export default function FolderPage() {
       )}
 
       <FileUploadModal isOpen={showFileModal} onClose={() => setShowFileModal(false)} onSuccess={fetchFolderContents} folderId={folder._id} />
+      <NoteModal isOpen={showNoteModal} onClose={() => setShowNoteModal(false)} onSuccess={fetchFolderContents} folderId={folder._id} />
       <Chatbot />
     </div>
   );

@@ -24,12 +24,15 @@ api.interceptors.request.use(
 export default api;
 
 export const folderApi = {
-  create: (data: { name: string; purpose: string; parentId?: string }) =>
+  create: (data: { name: string; purpose: string }) =>
     api.post('/folders', data),
-  getByPath: (path: string) => api.get(`/folders?path=${encodeURIComponent(path)}`),
+  update: (folderId: string, data: { name?: string; purpose?: string }) =>
+    api.put(`/folders/${folderId}`, data),
+  delete: (folderId: string) => api.delete(`/folders/${folderId}`),
+  getBySlug: (slug: string) => api.get(`/folders/slug/${slug}`),
   getRoot: () => api.get('/folders/root'),
   getAll: () => api.get('/folders/all'),
-  getById: (id: string) => api.get(`/folders/${id}`),
+  getContents: (folderId: string) => api.get(`/folders/${folderId}/contents`),
 };
 
 export const fileApi = {
@@ -49,3 +52,11 @@ export const fileApi = {
 export const aiApi = {
   ask: (question: string) => api.post('/ai/ask', { question }),
 };
+
+export const noteApi = {
+  create: (data: { folderId: string; title: string; type: "link" | "text"; content: string }) =>
+    api.post("/notes", data),
+  getByFolder: (folderId: string) => api.get(`/notes/folder/${folderId}`),
+  delete: (noteId: string) => api.delete(`/notes/${noteId}`),
+};
+

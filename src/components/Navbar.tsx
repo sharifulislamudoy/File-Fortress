@@ -44,12 +44,6 @@ export default function Navbar() {
 
             {/* Desktop Navigation Links */}
             <div className="flex items-center gap-6">
-              <NavLink href="/" icon={<Home className="w-4 h-4" />}>
-                Home
-              </NavLink>
-              <NavLink href="/files" icon={<FolderTree className="w-4 h-4" />}>
-                My Files
-              </NavLink>
 
               {/* Cloudinary Connection Status */}
               <Link
@@ -68,26 +62,6 @@ export default function Navbar() {
                   </div>
                 )}
               </Link>
-
-              {/* Voice Assistant Indicator */}
-              <button
-                onClick={() => setIsVoiceActive(!isVoiceActive)}
-                className={`relative p-2 rounded-full transition-all ${
-                  isVoiceActive
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white/10 text-white/70 hover:bg-white/20"
-                }`}
-              >
-                <Mic className="w-5 h-5" />
-                {isVoiceActive && (
-                  <motion.span
-                    className="absolute inset-0 rounded-full bg-emerald-500"
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    style={{ zIndex: -1 }}
-                  />
-                )}
-              </button>
             </div>
 
             {/* Profile Icon (Desktop) */}
@@ -107,18 +81,6 @@ export default function Navbar() {
                   <div className="px-4 py-2 text-sm text-white/60 border-b border-emerald-500/20">
                     {user?.name || user?.email}
                   </div>
-                  <Link
-                    href="/profile"
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition-colors"
-                  >
-                    <User className="w-4 h-4" /> Profile
-                  </Link>
-                  <Link
-                    href="/settings"
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition-colors"
-                  >
-                    <Settings className="w-4 h-4" /> Settings
-                  </Link>
                   <button
                     onClick={logout}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-colors w-full text-left"
@@ -135,8 +97,6 @@ export default function Navbar() {
       {/* Mobile Bottom Navigation Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-dark-green/95 backdrop-blur-lg border-t border-emerald-500/20">
         <div className="flex items-center justify-around py-2">
-          <MobileNavLink href="/" icon={<Home className="w-5 h-5" />} label="Home" />
-          <MobileNavLink href="/files" icon={<FolderTree className="w-5 h-5" />} label="Files" />
           {/* Cloud status for mobile */}
           <Link
             href={cloudConnected ? "/files" : "/connect-cloudinary"}
@@ -154,23 +114,6 @@ export default function Navbar() {
               </>
             )}
           </Link>
-          <button
-            onClick={() => setIsVoiceActive(!isVoiceActive)}
-            className={`relative flex flex-col items-center justify-center p-2 rounded-lg transition-all ${
-              isVoiceActive ? "text-emerald-400" : "text-white/60"
-            }`}
-          >
-            <Mic className="w-5 h-5" />
-            <span className="text-[10px] mt-1">Voice</span>
-            {isVoiceActive && (
-              <motion.span
-                className="absolute inset-0 rounded-lg bg-emerald-500/30"
-                animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0, 0.3] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                style={{ zIndex: -1 }}
-              />
-            )}
-          </button>
         </div>
       </div>
 
@@ -199,18 +142,6 @@ export default function Navbar() {
                 <div className="px-4 py-2 text-sm text-white/60 border-b border-emerald-500/20">
                   {user?.name || user?.email}
                 </div>
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition-colors"
-                >
-                  <User className="w-4 h-4" /> Profile
-                </Link>
-                <Link
-                  href="/settings"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-white/80 hover:bg-white/10 transition-colors"
-                >
-                  <Settings className="w-4 h-4" /> Settings
-                </Link>
                 <button
                   onClick={logout}
                   className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-colors w-full text-left"
@@ -223,39 +154,5 @@ export default function Navbar() {
         </div>
       </div>
     </>
-  );
-}
-
-// Desktop Nav Link component
-function NavLink({
-  href,
-  icon,
-  children,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-2 text-white/70 hover:text-white transition-colors text-sm font-medium group"
-    >
-      <span className="group-hover:scale-110 transition-transform">{icon}</span>
-      {children}
-    </Link>
-  );
-}
-
-// Mobile Nav Link component
-function MobileNavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="flex flex-col items-center justify-center p-2 rounded-lg text-white/60 hover:text-emerald-400 transition-colors"
-    >
-      {icon}
-      <span className="text-[10px] mt-1">{label}</span>
-    </Link>
   );
 }
